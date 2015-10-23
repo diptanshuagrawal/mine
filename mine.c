@@ -12,6 +12,8 @@ void game();
 void resume();
 void exitmenu();
 void instruction();
+void revealmines(char a[SIZE][SIZE], int p, int q);
+int openmine(int y, int x, int p, int q, char a[SIZE][SIZE]);
 int main() {
 	menu();
 }
@@ -115,14 +117,18 @@ void menu() {
 				p = item_userptr(cur);
 				p((char *)item_name(cur));
 				pos_menu_cursor(my_menu);
-				//clear();
-				//endwin();
+				clear();
+				endwin();
+				refresh();
+				attrset(COLOR_PAIR(1));
 				break;
 			}
 			break;
 		}
-		attrset(COLOR_PAIR(1));
 		initscr();
+		init_pair(1, COLOR_RED, COLOR_BLACK);
+		bkgd(COLOR_PAIR(1));
+		attrset(COLOR_PAIR(1));
 //		wrefresh(my_menu_win);
 		post_menu(my_menu);
 		box(my_menu_win, 0, 0);
@@ -199,35 +205,40 @@ void game() {
 //	free_item(my_items[3]);
 //	free_menu(my_menu);
 //	endwin();
-//	clear();
-	int i, j, k = 0, y, x, p, q, i1 = 0, i2,j2, mines = 0;
+	clear();
+	int i, j, k = 0, y, x, p, q, i1 = 0, i2,j2, mines = 0, flag = 0;
 	int c;
-	char a[SIZE][SIZE], b;
+	char a[SIZE][SIZE], d[SIZE][SIZE], e[SIZE][SIZE], b;
 	initscr();
 	cbreak();
 	noecho();
 	keypad(stdscr, TRUE);
 
 	start_color();
-	init_pair(1, COLOR_WHITE, COLOR_RED);
-	init_pair(2, COLOR_BLACK, COLOR_RED);
-	attrset(COLOR_PAIR(2));
+	init_pair(3, COLOR_WHITE, COLOR_RED);
+	init_pair(2, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(1, COLOR_RED, COLOR_BLACK);
+	attrset(COLOR_PAIR(3));
 
 	box(stdscr, 0, 0);
 	mvprintw(0, 0, "Use Arrow Keys To Navigate");
 	mvprintw(1, 0, "Press Enter To Select Tile");
 	mvprintw(2, 0, "Press Q To Exit");
 	mvprintw(3, 0, "Press F To Flag");
-	attrset(COLOR_PAIR(1));
+	attrset(COLOR_PAIR(3));
 
 	srand(time(NULL));
-	while(i1 < SIZE * 2) {
+	while(i1 < SIZE) {
 		i2 = rand() % SIZE;
 		j2 = rand() % SIZE;
 		while(a[i2][j2] != '*') {
 			a[i2][j2] = '*';
 			i1++;
 		}
+	}
+	for(i = 0; i < SIZE; i++) {
+		for(j = 0; j < SIZE; j++) 
+			e[i][j] = a[i][j];
 	}
 	/*counting the no. of mines around each box*/
 	for(i2 = 0; i2 < SIZE; i2++) {
@@ -248,7 +259,12 @@ void game() {
 				a[i2][j2] = b;
 		}
 	}
-	mvprintw((LINES + (SIZE - 1) + 20) / 2, (COLS - 14) / 2, "Mines left: %d", SIZE * 2);
+	for( i = 0; i < SIZE; i++) {
+		for(j = 0; j < SIZE; j++)
+			mvprintw(30 + i,30 + j,"%c",a[i][j]);
+		mvprintw(30 + i, 30 + j, "\n");
+	}
+	mvprintw((LINES + (SIZE - 1) + 20) / 2, (COLS - 14) / 2, "Mines left: %d", SIZE);
 	/*printing in the miidle*/	
 	x = (COLS - ((SIZE - 1) * 4 + 1)) / 2;
 	p = x;
@@ -310,12 +326,43 @@ void game() {
 					x -= 4;
 				break;
 			case 'a':
-				printw("%c", a[(y-q)/2][(x - p) / 4]);
+				if(a[(y - q) / 2][(x - p) / 4] == '*') {
+					revealmines(a, p, q);
+					attron(COLOR_PAIR(1));
+					refresh();
+					sleep(1);
+					mvprintw((LINES) / 2, (COLS - 16) / 2, "BOOM!!! YOU LOST");
+					attroff(COLOR_PAIR(1));
+				}
+				else if( d[(y - q) / 2][(x - p) / 4] == '#');
+				else { 
+				printw("%c", a[(y - q) / 2][(x - p) / 4]);
+				//openmine(y, x, p, q, a);
+				}
 				break;
+/*			case 'n':
+				clear();
+				refresh();
+				endwin();
+				game();
+				break;*/
 			case 'f':
-				printw("#");
-				k++;
-				mvprintw((LINES + (SIZE - 1) + 20) / 2, (COLS - 14) / 2, "Mines left: %0d", (SIZE * 2) - k);
+				if(d[(y - q) / 2][(x - p) / 4] != '#') {
+					printw("#");
+					k++;
+					d[(y - q) / 2][(x - p) / 4] = '#';
+				}
+				else {
+					d[(y - q) / 2][(x - p) / 4] = '.';
+					printw(".");
+					k--;
+				}
+				mvprintw((LINES + (SIZE - 1) + 20) / 2, (COLS - 14) / 2, "Mines left: %d", (SIZE) - k);
+/*				if(k = SIZE) {
+					for(i = 0; i < SIZE; i++) {
+						for(j = 0; j < SIZE; j++) {
+							if((e[i][j] != '*' && d[i][j] != '#') || ( e[i][j] == '*' && d[i][j] == '#'))
+								flag = 1;*/
 				break ;
 		}
 	move(y, x);
@@ -326,3 +373,80 @@ void game() {
 //	menu();
 	refresh();
 }
+void revealmines(char a[SIZE][SIZE], int p, int q) {
+	int i, j;
+	for(i = 0; i < SIZE; i++) {
+		for(j = 0; j < SIZE; j++) {
+			if(a[j][i] == '*')
+				mvprintw((2 * j) + q, (4 * i) + p, "*");
+		}
+	}
+}
+/*int openmine(int y, int x, int p, int q, char a[SIZE][SIZE]) {
+	int i = 0, j = 0;
+	j = (y - q) / 2;
+	i = (x - p ) / 4;
+	for(i1 = -1; i1 <= 1; i1++) {
+		for(j1 = -1; j1 <= 1; j1++) {
+			if(a[i + i1][j + j1] != ' ') {
+				mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p, "%c", a[i + i1][j + j1]);
+				return 0;
+			}
+			else if(a[i + i1][j + j1] == ' ') {
+				mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p, " ");
+				openmine( ((j + j1) * 2) + q, ((i1 + i) * 4) + p, p, q, a);
+			}
+		}
+	}
+	if(a[j][i] == ' ') {
+	if( ((a[j + 1][i + 1] != ' ') || (i + 1) < 0) || ((i + 1) > (SIZE - 1)) || ((j + 1) < 0) || ((j + 1) > SIZE - 1))
+		return 0;
+	else if(a[j + 1][i + 1] == ' '){
+		mvprintw( ((j + 1) * 2) + q, ((1 + i) * 4) + p," ");
+		openmine( ((j + 1) * 2) + q, ((1 + i) * 4) + p, p, q, a);
+	}
+	
+	if( ((a[j + 1][i + 0] != ' ') || (i + 0) < 0) || ((i + 0) > (SIZE - 1)) || ((j + 1) < 0) || ((j + 1) > SIZE - 1))
+		return 0;
+	else if(a[j + 1][1 + 0] == ' '){
+		mvprintw( ((j + 1) * 2) + q, ((0 + i) * 4) + p, " ");
+		openmine( ((j + 1) * 2) + q, ((0 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + -1][i + -1] != ' ') || (i + -1) < 0) || ((i + -1) > (SIZE - 1)) || ((j + -1) < 0) || ((j + -1) > SIZE - 1))
+		return 0;
+	else if(a[j + -1][i + -1] == ' '){
+		mvprintw( ((j + -1) * 2) + q, ((-1 + i) * 4) + p, " ");
+		openmine( ((j + -1) * 2) + q, ((-1 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + 0][i + -1] != ' ') || (i + -1) < 0) || ((i + -1) > (SIZE - 1)) || ((j + 0) < 0) || ((j + 0) > SIZE - 1))
+		return 0;
+	else if(a[j + 0][i + -1] == ' '){
+		mvprintw( ((j + 0) * 2) + q, ((-1 + i) * 4) + p," ");
+		openmine( ((j + 0) * 2) + q, ((-1 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + 1][i + -1] != ' ') || (i + -1) < 0) || ((i + -1) > (SIZE - 1)) || ((j + 1) < 0) || ((j + 1) > SIZE - 1))
+		return 0;
+	else if(a[j + 1][i + -1] == ' '){
+		mvprintw( ((j + 1) * 2) + q, ((-1 + i) * 4) + p, " ");
+		openmine( ((j + 1) * 2) + q, ((-1 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + -1][i + 0] != ' ') || (i + 0) < 0) || ((i + 0) > (SIZE - 1)) || ((j + -1) < 0) || ((j + -1) > SIZE - 1))
+		return 0;
+	else if(a[j + -1][i + 0] == ' '){
+		mvprintw( ((j + -1) * 2) + q, ((0 + i) * 4) + p, " ");
+		openmine( ((j + 0) * 2) + q, ((1 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + -1][i + 1] != ' ') || (i + 1) < 0) || ((i + 1) > (SIZE - 1)) || ((j + -1) < 0) || ((j + -1) > SIZE - 1))
+		return 0;
+	else if(a[j + -1][i + 1] == ' '){
+		mvprintw( ((j + -1) * 2) + q, ((1 + i) * 4) + p, " ");
+		openmine( ((j + -1) * 2) + q, ((1 + i) * 4) + p, p, q, a);
+	}
+	if( ((a[j + 0][i + 1] != ' ') || (i + 1) < 0) || ((i + 1) > (SIZE - 1)) || ((j + 0) < 0) || ((j + 0) > SIZE - 1))
+		return 0;
+	else if(a[j + 0][i + 1] == ' '){
+		mvprintw( ((j + 0) * 2) + q, ((1 + i) * 4) + p, " ");
+		openmine( ((j + 0) * 2) + q, ((1 + i) * 4) + p, p, q, a);
+	}
+}
+}*/ 
