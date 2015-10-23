@@ -11,6 +11,7 @@ void menu();
 void game();
 void resume();
 void exitmenu();
+void options();
 void instruction();
 void revealmines(char a[SIZE][SIZE], int p, int q);
 int openmine(int y, int x, int p, int q, char a[SIZE][SIZE]);
@@ -40,7 +41,7 @@ void print_in_middle(WINDOW *win, int starty, int startx, int width, char *strin
 	wattroff(win, color);
 	refresh();
 }
-
+/*making a menu using a window*/
 void menu() {
 	#define CTRLD	4
 
@@ -74,7 +75,7 @@ void menu() {
 
 	set_item_userptr(my_items[0], game);
 	set_item_userptr(my_items[1], resume);
-//	set_item_userptr(my_items[2], options);
+	set_item_userptr(my_items[2], options);
 	set_item_userptr(my_items[3], instruction);
 	set_item_userptr(my_items[4], exitmenu);
 	my_menu = new_menu((ITEM **)my_items);
@@ -92,7 +93,7 @@ void menu() {
 	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
 	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
 	mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
-	mvprintw(LINES - 2, 0, "F1 to EXIT");
+	mvprintw(LINES - 2, 2, "F1 to EXIT");
 	refresh();
 
 	post_menu(my_menu);
@@ -120,14 +121,115 @@ void menu() {
 				clear();
 				endwin();
 				refresh();
-				attrset(COLOR_PAIR(1));
+				init_pair(1, COLOR_RED, COLOR_BLACK);
 				break;
 			}
 			break;
 		}
+		endwin();
 		initscr();
 		init_pair(1, COLOR_RED, COLOR_BLACK);
-		bkgd(COLOR_PAIR(1));
+		attrset(COLOR_PAIR(1));
+//		wrefresh(my_menu_win);
+		post_menu(my_menu);
+		box(my_menu_win, 0, 0);
+//		print_in_middle(my_menu_win, 1, 0, 40, "Minesweeper", COLOR_PAIR(1));
+		wrefresh(my_menu_win);
+	}
+	
+	unpost_menu(my_menu);
+	for(i = 0; i < n_choices; i++)
+		free_item(my_items[i]);
+	free_menu(my_menu);
+	endwin();
+}
+void options(){
+	#define CTRLD	4
+
+	char *choices[] = {
+				"            Difficulty          ",
+				"              Rows              ",
+				"             Columns            ",
+				"             Colours            ",
+				"              Back              ",
+			};
+	ITEM **my_items;
+	int c;
+	WINDOW *my_menu_win;
+	MENU *my_menu;
+	int n_choices = 5, i;
+	ITEM *cur_item;
+
+	initscr();
+	noecho();
+	cbreak();
+	keypad(stdscr, TRUE);
+	start_color();
+	init_pair(1, COLOR_RED, COLOR_BLACK);
+	attrset(COLOR_PAIR(1));
+	
+	my_items = (ITEM **)calloc(n_choices + 1, sizeof(ITEM *));
+	
+	for(i = 0; i < n_choices; ++i)
+		my_items[i] = new_item(choices[i], NULL);
+	my_items[n_choices] = (ITEM *)NULL;
+
+/*	set_item_userptr(my_items[0], game);
+	set_item_userptr(my_items[1], resume);
+	set_item_userptr(my_items[2], options);
+	set_item_userptr(my_items[3], instruction);
+	set_item_userptr(my_items[4], exitmenu);*/
+	my_menu = new_menu((ITEM **)my_items);
+
+	my_menu_win = newwin(10, 40, (LINES - 10) / 2, (COLS - 40) / 2);
+	keypad(my_menu_win, TRUE);
+
+	set_menu_win(my_menu, my_menu_win);
+	set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
+
+	set_menu_mark(my_menu, "->");
+	box(my_menu_win, 0, 0);
+	print_in_middle(my_menu_win, 1, 0, 40, "Options", COLOR_PAIR(1));
+
+	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
+	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
+	mvwaddch(my_menu_win, 2, 39, ACS_RTEE);
+	mvprintw(LINES - 2, 2, "q to EXIT");
+	refresh();
+
+	post_menu(my_menu);
+	wrefresh(my_menu_win);
+
+	while((c = wgetch(my_menu_win)) != 'q') {
+		switch(c) {
+			case KEY_DOWN:
+				menu_driver(my_menu, REQ_DOWN_ITEM);
+				break ;
+			case KEY_UP:
+				menu_driver(my_menu, REQ_UP_ITEM);
+				break ;
+/*			case 10:
+			{	unpost_menu(my_menu);
+				endwin();
+//				clear();
+				ITEM *cur;
+
+				void (*p) (char *);
+				cur = current_item(my_menu);
+				p = item_userptr(cur);
+				p((char *)item_name(cur));
+				pos_menu_cursor(my_menu);
+				clear();
+				endwin();
+				refresh();
+				init_pair(1, COLOR_RED, COLOR_BLACK);
+				break;
+			}
+			break;*/
+		}
+		endwin();
+		initscr();
+		init_pair(1, COLOR_RED, COLOR_BLACK);
 		attrset(COLOR_PAIR(1));
 //		wrefresh(my_menu_win);
 		post_menu(my_menu);
@@ -216,16 +318,16 @@ void game() {
 
 	start_color();
 	init_pair(3, COLOR_WHITE, COLOR_RED);
-	init_pair(2, COLOR_BLACK, COLOR_YELLOW);
+	init_pair(2, COLOR_WHITE, COLOR_RED);
 	init_pair(1, COLOR_RED, COLOR_BLACK);
-	attrset(COLOR_PAIR(3));
+	attrset(COLOR_PAIR(2));
 
 	box(stdscr, 0, 0);
 	mvprintw(0, 0, "Use Arrow Keys To Navigate");
 	mvprintw(1, 0, "Press Enter To Select Tile");
 	mvprintw(2, 0, "Press Q To Exit");
 	mvprintw(3, 0, "Press F To Flag");
-	attrset(COLOR_PAIR(3));
+//	attrset(COLOR_PAIR(3));
 
 	srand(time(NULL));
 	while(i1 < SIZE) {
@@ -259,11 +361,11 @@ void game() {
 				a[i2][j2] = b;
 		}
 	}
-	for( i = 0; i < SIZE; i++) {
+/*	for( i = 0; i < SIZE; i++) {
 		for(j = 0; j < SIZE; j++)
 			mvprintw(30 + i,30 + j,"%c",a[i][j]);
 		mvprintw(30 + i, 30 + j, "\n");
-	}
+	}*/
 	mvprintw((LINES + (SIZE - 1) + 20) / 2, (COLS - 14) / 2, "Mines left: %d", SIZE);
 	/*printing in the miidle*/	
 	x = (COLS - ((SIZE - 1) * 4 + 1)) / 2;
