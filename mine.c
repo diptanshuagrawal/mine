@@ -3,12 +3,14 @@
 #include <menu.h>
 #include <stdlib.h>
 #include <string.h>
+#include <errno.h>
 
 //#define SIZE	8
 #define CTRLD	4
 
 int ro = 8, col = 8;
 int dif = 8;
+int flag1 = 0, k = 0;
 
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color);
 void back();
@@ -19,10 +21,12 @@ void exitmenu();
 void options();
 void diff();
 void row();
-int open(int i, int j, int i1, int j1, int p, int q, char a[ro][col],char e[ro][col]);
+int opn(int i, int j, int i1, int j1, int p, int q, char a[ro][col],char e[ro][col]);
 void about();
 void revealmines(char a[ro][col], int p, int q);
 int openmine(int y, int x, int p, int q, char a[ro][col], int v[ro][col], char e[ro][col]);
+void save(char a[ro][col], char d[ro][col], char e[ro][col], int v[ro][col], int r, int co, int dif, int k);
+void printscr(int x, int y, int p, int q, char e[ro][col]);
 int main() {
 	menu();
 }
@@ -398,38 +402,18 @@ void about() {
 }
 	
 void resume() {
-	int c;
-	initscr();
-	cbreak;
-	noecho();
-	keypad(stdscr, TRUE);
-	//while((c = getch()) != KEY_F(1))
-	//	;
-	printw("hi");
-	start_color();
-	init_pair(1, COLOR_WHITE, COLOR_BLACK);
-	attrset(COLOR_PAIR(1));
-	while(c = getch() != 'q');
-	clear();
-//	endwin();
-	//exit();
+	flag1 = 1;
+	game();
 }
 	
 void game() {
 S:
 	clear();
-	FILE *fp;
-	char name[] = "resume";
-	int i, j, k = 0, y, x, p, q, i1 = 0, i2,j2, mines = 0;
-	int c;
-	char a[ro][col], d[ro][col], e[ro][col], b;
-/*	typedef struct mine {
-		char a[ro][col];
-		char d[ro][col];
-		int v[ro][col];*/
+	int i, j, y, x, p, q, i1 = 0, i2,j2, mines = 0;
+	int c, r, co;
 	int v[ro][col];
-	char str[5];
-//	int **v;
+	char a[ro][col], d[ro][col], e[ro][col], b;
+	char str[4];
 
 	initscr();
 	cbreak();
@@ -437,10 +421,8 @@ S:
 	keypad(stdscr, TRUE);
 
 	start_color();
+	init_pair(1, COLOR_RED, COLOR_WHITE);
 	init_pair(2, COLOR_WHITE, COLOR_RED);
-	init_pair(1, COLOR_RED, COLOR_BLACK);
-//	init_pair(3, COLOR_WHITE, COLOR_CYAN);
-//	bkgd(COLOR_PAIR(3));
 	attrset(COLOR_PAIR(2));
 
 	box(stdscr, 0, 0);
@@ -450,43 +432,68 @@ S:
 	mvprintw(3, 0, "Press F To Flag");
 	mvprintw(4, 0, "Press N For New Game");
 
-/*	v = (int **)malloc(sizeof(int *) * ro);
-	for(i = 0; i < col; i++)
-	v[i] = (int *)malloc(sizeof(int) * col);*/
+	if(flag1 == 1) {
+		FILE *fp;
+		int i, j;
+		fp = fopen("resume.txt", "r");
+		if(fp == NULL){
+			printf("operation failed\n");
+			perror("a");
+		}
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++)
+				 fscanf(fp, "%c", &a[i][j]);
+		}
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j< col; j++)
+				 fscanf(fp, "%c", &d[i][j]);
+		}
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++)
+				fscanf(fp, "%c", &e[i][j]);
+		}
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++) {
+				fscanf(fp, "%d", &v[i][j]);
+				v[i][j] = i2;
+	//			mvprintw(20 + i, 20 + j, "%d", v[i][j]);
+			}
+		}
 
-	for(i = 0; i < col; i++) {
-		for(j = 0; j < ro; j++)
+		fscanf(fp, "%d", &k);
+		fscanf(fp, "%d", &ro);
+//		mvprintw(LINES - 2, 3, "%d", ro);
+		fscanf(fp, "%d", &col);
+		fscanf(fp, "%d", &dif);
+		mvprintw(10, 10 , "%d", k);
+		fclose(fp);
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++)
+			v[i][j] = 0;
+		}
+
+}
+
+	if(flag1 == 0) {
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
 			v[i][j] = 0;
 	}
-
-/*	for(i = 0; i < col; i++) {
-		for(j = 0; j < ro; j++)
-			mvprintw(30 + i,5 + j,"%c", v[i][j]);
+/*	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			mvprintw(30 + i,5 + j,"%d", v[i][j]);
 	}*/
 
 	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++) 
 			a[i][j] = 'q';
 	}
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(20 + i,20 + j,"%c", a[i][j]);
-	}*/
 
 	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++) 
 			d[i][j] = '3';
 	}
 
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) 
-			v[i][j] = 0;
-	}
-
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(30 + i, 0 + j,"%d", v[i][j]);
-	}*/
 
 	srand(time(NULL));
 	while(i1 < dif) {
@@ -501,21 +508,11 @@ S:
 		for(j = 0; j < col; j++) 
 			e[i][j] = '.';
 	}
-	for(i = 0; i < ro; i++) {
+/*	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++)
 			mvprintw(10 + i, 10 + j,"%c", e[i][j]);
-	}
+	}*/
 
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) {
-			if(a[i][j] == '*')
-				e[i][j] = a[i][j];
-		}
-	}*/
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(10 + i, 20 + j,"%c", e[i][j]);
-	}*/
 
 	/*counting the no. of mines around each box*/
 	for(i2 = 0; i2 < ro; i2++) {
@@ -539,13 +536,9 @@ S:
 		}
 	}
 
-/*	for( i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(30 + i,30 + j,"%c",a[i][j]);
-			mvprintw(30 + i, 30 + j, "\n");
 	}
-*/
-	mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", dif);
+
+	mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", (dif - k));
 	/*printing in the middle*/	
 	x = (COLS - ((col - 1) * 4 + 1)) / 2;
 	p = x;
@@ -553,11 +546,10 @@ S:
 	q = y;
 	move(y, x);
 
-	move(y, x);	
+/*	move(y, x);	
 	for(i = y - 1; i < y + (ro - 1) * 2 + 2; i++) {
-		for(j = x - 3; j < x + (col - 1) * 4 + 4; j++) {
+		for(j = x - 3; j < x + (col - 1) * 4 + 4; j++)
 			mvprintw(i, j, " ");
-		}
 	}
 
 	x = p;
@@ -572,27 +564,26 @@ S:
 		x = p;
 		y += 2;
 		move(y, x);
-	}
+	}*/
+	printscr(x, y, p, q, e);
 	move(q, p);
 	x = p;
 	y = q;
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col ; j++);
-			v[i][j] = 0;
-	}
-	for( i = 0; i < col; i++) {
-		for(j = 0; j < ro; j++)
-			mvprintw(30 + i,0 + j,"%d",v[i][j]);
-		mvprintw(30 + i, 0 + j, "\n");
-	}*/
+
 
 //	attron(A_REVERSE);
 //	mvprintw( 15, 61, ".");
 //	attroff(A_REVERSE);
+/*	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++) 
+			v[i][j] = 0;
+	}*/
 
 	/*assigning functions to keys*/
 	while((c = getch()) != 'q') {
 		int flag = 0;
+	//	init_pair(2, COLOR_WHITE, COLOR_RED);
+	//	attrset(COLOR_PAIR(2));
 		switch(c) {
 			case KEY_UP:
 				if(y == q)
@@ -618,18 +609,19 @@ S:
 				else
 					x -= 4;
 				break;
-			case 'h':
+			case 'c':
 				getstr(str);
-				if(strcmp(str, "cheat") == 0){
+				if(strcmp(str, "heat") == 0){
 					for( i = 0; i < ro; i++) {
 						for(j = 0; j < col; j++)
-							mvprintw((LINES - ro - 2) + i, 2 + j,"%c",a[i][j]);
-							mvprintw((LINES - ro - 2) + i, 2 + j, "\n");
+							mvprintw((LINES - ro) / 2 + i, COLS - col + j,"%c",a[i][j]);
+							mvprintw((LINES - ro) / 2 + i, COLS - col + j, "\n");
 					}
 				}
 				break;
 			case 10:
 				if(a[(y - q) / 2][(x - p) / 4] == '*' && d[(y - q) / 2][(x - p) / 4] != '#') {
+				//	init_pair(1, COLOR_RED, COLOR_BLACK);
 					revealmines(a, p, q);
 					attron(COLOR_PAIR(1));
 					refresh();
@@ -651,16 +643,33 @@ S:
 					}
 				}
 				break;
-	/*		case 'r':
-				fp = fopen("resume", "w");
-				scr-init(resume);
-				scr-dump(resume);
-				return;*/
 			case 'n':
-				clear();
-				refresh();
-				endwin();
-				goto S;
+			//	init_pair(2, COLOR_WHITE, COLOR_RED);
+			//	init_pair(1, COLOR_RED, COLOR_BLACK);
+			//	attrset(COLOR_PAIR(2));
+			//	attron(COLOR_PAIR(1));
+				mvprintw( LINES / 2, (COLS - 25) / 2, "Do Want To Start A New Game");
+				mvprintw( LINES / 2 + 1, COLS / 2 - 3 ,"(y/n)?");
+			//	attroff(COLOR_PAIR(1));
+			//	init_pair(1, COLOR_WHITE, COLOR_RED);
+				if((c = getch()) == 'y') {
+					clear();
+					refresh();
+					endwin();
+					goto S;
+				}
+				else if((c == 'n')) {
+			//		init_pair(1, COLOR_WHITE, COLOR_RED);
+			//		attrset(COLOR_PAIR(1));
+					move(q, p);
+					x = p;
+					y = q;
+					printscr(x, y, p, q, e);
+					move(q, p);
+					x = p;
+					y = q;
+					}
+				break;
 			case 'f':
 				if(e[(y - q) / 2][(x - p) / 4] == '.') {
 					printw("#");
@@ -689,15 +698,16 @@ S:
 			}
 		}
 	}
-	for(i = 0; i < ro; i++) {
+/*	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++)
 			mvprintw(10 + i,10 + j,"%c", e[i][j]);
-	}
+	}*/
 /*
 		mvprintw(2, 50, "%d", (ro * col));
 		mvprintw(3, 50, "%d", flag);*/
 		refresh();
 	if(flag == (ro * col)) {
+	//	init_pair(1, COLOR_RED, COLOR_BLACK);
 		attron(COLOR_PAIR(1));
 		refresh();
 		sleep(1);
@@ -711,6 +721,19 @@ S:
 
 	move(y, x);
 	}
+	flag1 = 0;
+	r = ro;
+	co = col;
+	mvprintw( LINES / 2, (COLS - 24) / 2, "Do Want To Save The Game");
+	mvprintw( LINES / 2 + 1, COLS / 2 - 3 ,"(y/n)?");
+	while(1) {
+		if((c = getch()) == 'y') {
+			save(a, d, e, v, r, c, dif, k);
+			break;
+			}
+		else if(c == 'n')
+			break;
+	}
 /*	for(i = 0; i < col; i++)
 		free(v[i]);
 	free(v);*/
@@ -720,6 +743,62 @@ S:
 //	menu();
 	refresh();
 }
+
+void save(char a[ro][col], char d[ro][col], char e[ro][col], int v[ro][col], int r, int co, int dif, int k) {
+	FILE *fp;
+	int i, j;
+	fp = fopen("resume.txt", "w");
+	if(fp == NULL)
+		printw("operation failed\n");
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", a[i][j]);
+	}
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", d[i][j]);
+	}
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", e[i][j]);
+	}
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%d", v[i][j]);
+	}
+
+	fprintf(fp, "%d", k);
+	fprintf(fp, "%d", ro);
+	fprintf(fp, "%d", col);
+	fprintf(fp, "%d", dif);
+	fclose(fp);
+}
+void printscr(int x, int y, int p, int q, char e[ro][col]) {
+	int i, j;
+	move(y, x);	
+	for(i = y - 1; i < y + (ro - 1) * 2 + 2; i++) {
+		for(j = x - 3; j < x + (col - 1) * 4 + 4; j++)
+			mvprintw(i, j, " ");
+	}
+
+	x = p;
+	y = q;
+	move(y, x);
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++) {
+			printw("%c", e[i][j]);
+			x += 4;
+			move(y, x);
+		}
+		x = p;
+		y += 2;
+		move(y, x);
+	}
+/*	move(q, p);
+	x = p;
+	y = q;*/
+}
+
 void revealmines(char a[ro][col], int p, int q) {
 	int i, j;
 	for(i = 0; i < ro; i++) {
@@ -730,7 +809,7 @@ void revealmines(char a[ro][col], int p, int q) {
 	}
 }
 
-int open(int i, int j, int i1, int j1, int p, int q, char a[ro][col], char e[ro][col]) {
+int opn(int i, int j, int i1, int j1, int p, int q, char a[ro][col], char e[ro][col]) {
 	if((i + i1) < 0 || ((i + i1) > (col - 1)) || ((j + j1) < 0) || ((j + j1) > (ro - 1)))
 		return 0;
 //	else if(a[j + j1][i + i1] != ' ')
@@ -751,14 +830,14 @@ int openmine(int y, int x, int p, int q, char a[ro][col], int v[ro][col], char e
 //	sleep(1);
 	if(a[j][i] == ' ') {
 		v[j][i] = 1;
-		open(i, j, 1, -1, p, q, a, e);
-		open(i, j, 1, 0, p, q, a, e);
-		open(i, j, 1, 1, p, q, a, e);
-		open(i, j, 0, 1, p, q, a, e);
-		open(i, j, -1, 1, p, q, a, e);
-		open(i, j, -1, 0, p, q, a, e);
-		open(i, j, -1, -1, p, q, a, e);
-		open(i, j, 0, -1, p, q, a, e);
+		opn(i, j, 1, -1, p, q, a, e);
+		opn(i, j, 1, 0, p, q, a, e);
+		opn(i, j, 1, 1, p, q, a, e);
+		opn(i, j, 0, 1, p, q, a, e);
+		opn(i, j, -1, 1, p, q, a, e);
+		opn(i, j, -1, 0, p, q, a, e);
+		opn(i, j, -1, -1, p, q, a, e);
+		opn(i, j, 0, -1, p, q, a, e);
 		if(!((i + 1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + -1)) && !v[j + -1][i + 1]){
 //			if(a[j + -1][i + 1] == ' ')
 				openmine(2 * (j + -1) + q, 4 * (i + 1) + p, p, q, a, v, e);
@@ -803,19 +882,6 @@ int openmine(int y, int x, int p, int q, char a[ro][col], int v[ro][col], char e
 		}
 			refresh();
 
-//		sleep(1);
-
-//		sleep(1);
-
-/*
-		sleep(1);
-
-		sleep(1);
-
-		sleep(1);
-
-		sleep(1);
-*/
 }
 return 0;
 }
