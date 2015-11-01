@@ -1,2 +1,2 @@
 try :
-	cc -Wall mine.c -lncurses -o try
+	cc -Wall mine.c -lncurses -lmenu -o try
