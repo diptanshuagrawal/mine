@@ -5,32 +5,55 @@
 #include <string.h>
 #include <errno.h>
 
-//#define SIZE	8
 #define CTRLD	4
 
 int ro = 8, col = 8;
 int dif = 8;
-int flag1 = 0, k = 0;
+int flag1 = 0;
 
+typedef struct mine{
+	char **a;
+	char **d;
+	char **e;
+	int **v;
+	int k;
+}mine;
+
+/* function to display minesweeper in the beginning */
+void banner();
+/* function to print the title in the center */
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color);
+/* function to go back */
 void back();
+/* function to display menu */
 void menu();
+/* function to start the game */
 void game();
+/* function to resume game */
 void resume();
+/* function to exit from the menu */
 void exitmenu();
+/* function to display the options menu */
 void options();
+/* function to set the difficulty level */
 void diff();
+/* function to set the no. of rows and columns as per user */
 void row();
-int opn(int i, int j, int i1, int j1, int p, int q, char a[ro][col],char e[ro][col]);
+/* function to unveil the tile */
+int opn(int i, int j, int i1, int j1, int p, int q, mine m);
+int openmine(int y, int x, int p, int q, mine m);
+/* function to dispaly the about screen of the game */
 void about();
-void revealmines(char a[ro][col], int p, int q);
-int openmine(int y, int x, int p, int q, char a[ro][col], int v[ro][col], char e[ro][col]);
-void save(char a[ro][col], char d[ro][col], char e[ro][col], int v[ro][col], int r, int co, int dif, int k);
-void printscr(int x, int y, int p, int q, char e[ro][col]);
+/* function to reveal all the mines on the minefield when the user clicks on any mine */
+void revealmines(mine m, int p, int q);
+/* function to save all the data to files */
+void save(mine m);
+/* function to print the screen with the red box and the grid */
+void printscr(int x, int y, int p, int q, mine m);
 int main() {
+	banner();
 	menu();
 }
-/*function to print the title in the center*/
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color){
 	int length, x, y;
 	float temp;
@@ -55,6 +78,9 @@ void print_in_middle(WINDOW *win, int starty, int startx, int width, char *strin
 }
 /*making a menu using a window*/
 void menu() {
+	endwin();
+	clear();
+	refresh();
 	#define CTRLD	4
 
 	char *choices[] = {
@@ -125,7 +151,6 @@ void menu() {
 			case 10:
 			{	unpost_menu(my_menu);
 				endwin();
-//				clear();
 				ITEM *cur;
 
 				void (*p) (char *);
@@ -141,15 +166,17 @@ void menu() {
 			}
 			break;
 		}
+		wrefresh(my_menu_win);
 		endwin();
 		initscr();
 		init_pair(3, COLOR_RED, COLOR_BLACK);
 		bkgd(COLOR_PAIR(3));
 		attrset(COLOR_PAIR(3));
-//		wrefresh(my_menu_win);
+		set_menu_win(my_menu, my_menu_win);
+		set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
+		mvprintw(LINES - 2, 2, "Press F1 to EXIT");
 		post_menu(my_menu);
 		box(my_menu_win, 0, 0);
-//		print_in_middle(my_menu_win, 1, 0, 40, "Minesweeper", COLOR_PAIR(1));
 		wrefresh(my_menu_win);
 	}
 	
@@ -194,9 +221,7 @@ void options(){
 
 	set_item_userptr(my_items[0], diff);
 	set_item_userptr(my_items[1], row);
-//	set_item_userptr(my_items[2], options);
 	set_item_userptr(my_items[2], back);
-//	set_item_userptr(my_items[4], exitmenu);
 	my_menu = new_menu((ITEM **)my_items);
 
 	my_menu_win = newwin(10, 40, (LINES - 10) / 2, (COLS - 40) / 2);
@@ -231,7 +256,6 @@ void options(){
 			case 10:
 			{	unpost_menu(my_menu);
 				endwin();
-//				clear();
 				ITEM *cur;
 
 				void (*p) (char *);
@@ -251,14 +275,12 @@ void options(){
 		endwin();
 		init_pair(1, COLOR_RED, COLOR_BLACK);
 		attrset(COLOR_PAIR(1));
-//		wrefresh(my_menu_win);
 		post_menu(my_menu);
 		init_pair(4, COLOR_WHITE, COLOR_BLACK);
 		attron(COLOR_PAIR(4));
 		mvprintw(LINES - 2, 2, "Press Q To EXIT");
 		attroff(COLOR_PAIR(4));
 		box(my_menu_win, 0, 0);
-//		print_in_middle(my_menu_win, 1, 0, 40, "Minesweeper", COLOR_PAIR(1));
 		wrefresh(my_menu_win);
 	}
 	
@@ -274,7 +296,7 @@ void row() {
 	refresh();
 	initscr();
 	int c;
-	noecho();
+//	noecho();
 	cbreak();
 	keypad(stdscr, TRUE);
 	start_color();
@@ -378,13 +400,8 @@ void about() {
 	init_pair(1, COLOR_WHITE, COLOR_CYAN);
 	bkgd(COLOR_PAIR(1));
 	attrset(COLOR_PAIR(1));
-//	for(i = 0; i < LINES; i++){
-//		for(j = 0; j < COLS; j++){
-//			mvprintw(i, j, " ");
-//			sleep(1);
-//		}
-//	}
 	box(stdscr, 0, 0);
+
 	mvprintw( LINES - 2, 1, "Press Q To Go Back");
 	mvprintw(LINES / 2 - 10, COLS / 2 - 3, "ABOUT");
 	mvprintw(LINES / 2 - 8, COLS / 2 - 45, "The purpose of the game is to open all the cells of the board which do not contain a bomb.");
@@ -405,16 +422,53 @@ void resume() {
 	flag1 = 1;
 	game();
 }
-	
+
+void banner() {
+	int i, j, n = 1;
+	/* initialising screen */
+	initscr();
+	cbreak();
+	noecho();
+	keypad(stdscr, TRUE);
+
+	/* initialising colors */
+	start_color();
+	init_pair(8, COLOR_RED, COLOR_BLACK);
+	init_pair(9, COLOR_YELLOW, COLOR_BLACK);
+	attrset(COLOR_PAIR(8));
+	mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+	/* loop for changing the color */
+	for(i = 0; i < 10; i++) {
+		refresh();
+		sleep(1);
+		/* if color is red then change it to yellow */
+		if(n == 1) {
+			attrset(COLOR_PAIR(9));
+			mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+			n = 2;
+		}
+		/* if color is yellow then change it to red */
+		else if (n == 2) {
+			n = 1;
+			attrset(COLOR_PAIR(8));
+			mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+		}
+		i++;
+	}
+	refresh();
+	refresh();
+	clear();
+	refresh();
+}
 void game() {
 S:
+	/* clearing everything before starting the game */
 	clear();
 	int i, j, y, x, p, q, i1 = 0, i2,j2, mines = 0;
-	int c, r, co;
-	int v[ro][col];
-	char a[ro][col], d[ro][col], e[ro][col], b;
+	int c;
+	char b;
 	char str[4];
-
+	
 	initscr();
 	cbreak();
 	noecho();
@@ -426,164 +480,164 @@ S:
 	attrset(COLOR_PAIR(2));
 
 	box(stdscr, 0, 0);
+	/* printing the instructions on the top */
 	mvprintw(0, 0, "Use Arrow Keys To Navigate");
 	mvprintw(1, 0, "Press Enter To Select Tile");
 	mvprintw(2, 0, "Press Q To Exit");
 	mvprintw(3, 0, "Press F To Flag");
 	mvprintw(4, 0, "Press N For New Game");
 
+	/* declaring variable of datatype mine */
+	mine m;
+
+	/* if resume is called */
 	if(flag1 == 1) {
+		FILE *gp;
+		gp = fopen("resume1.txt", "r");
+
+		if(gp == NULL){
+			printf("operation failed\n");
+			perror("a");
+		}
+
+		/* reading data from the saved file */
+		fscanf(gp, "%d", &(m.k));
+		fscanf(gp, "%d", &ro);
+		fscanf(gp, "%d", &col);
+		fscanf(gp, "%d", &dif);
+
+		fclose(gp);
+	}
+
+	/* allocating memory to every element of the datatype mine */
+	m.v = (int **)malloc(sizeof(int *) * ro);
+	for(i = 0; i < ro; i++)
+		m.v[i] = (int *)malloc(sizeof(int) * col);
+
+	m.a = (char **)malloc(sizeof(char *) * ro);
+	for(i = 0; i < ro; i++)
+		m.a[i] = (char *)malloc(sizeof(char *) * col);
+
+	m.d = (char **)malloc(sizeof(char *) * ro);
+	for(i = 0; i < ro; i++)
+		m.d[i] = (char *)malloc(sizeof(char *) * col);
+
+	m.e = (char **)malloc(sizeof(char *) * ro);
+	for(i = 0; i < ro; i++)
+		m.e[i] = (char *)malloc(sizeof(char *) * col);
+
+	/* if resume is called */
+	if(flag1 == 1) {
+		/* reading data from the saved file */
 		FILE *fp;
 		int i, j;
+		char z;
 		fp = fopen("resume.txt", "r");
+
 		if(fp == NULL){
 			printf("operation failed\n");
 			perror("a");
 		}
+
 		for(i = 0; i < ro; i++) {
 			for(j = 0; j < col; j++)
-				 fscanf(fp, "%c", &a[i][j]);
+				 fscanf(fp, "%c", &(m.a[i][j]));
 		}
 		for(i = 0; i < ro; i++) {
 			for(j = 0; j< col; j++)
-				 fscanf(fp, "%c", &d[i][j]);
+				 fscanf(fp, "%c", &(m.d[i][j]));
 		}
 		for(i = 0; i < ro; i++) {
 			for(j = 0; j < col; j++)
-				fscanf(fp, "%c", &e[i][j]);
+				fscanf(fp, "%c", &(m.e[i][j]));
 		}
 		for(i = 0; i < ro; i++) {
 			for(j = 0; j < col; j++) {
-				fscanf(fp, "%d", &v[i][j]);
-				v[i][j] = i2;
-	//			mvprintw(20 + i, 20 + j, "%d", v[i][j]);
+				fscanf(fp, "%c", &z);
+				i2 = atoi(&z);
+				m.v[i][j] = i2;
 			}
 		}
 
-		fscanf(fp, "%d", &k);
-		fscanf(fp, "%d", &ro);
-//		mvprintw(LINES - 2, 3, "%d", ro);
-		fscanf(fp, "%d", &col);
-		fscanf(fp, "%d", &dif);
-		mvprintw(10, 10 , "%d", k);
 		fclose(fp);
-		for(i = 0; i < ro; i++) {
-			for(j = 0; j < col; j++)
-			v[i][j] = 0;
-		}
-
 }
 
+	/* if flag is not called */
 	if(flag1 == 0) {
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			v[i][j] = 0;
-	}
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(30 + i,5 + j,"%d", v[i][j]);
-	}*/
 
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) 
-			a[i][j] = 'q';
-	}
-
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) 
-			d[i][j] = '3';
-	}
-
-
-	srand(time(NULL));
-	while(i1 < dif) {
-		i2 = rand() % ro;
-		j2 = rand() % col;
-		while(a[i2][j2] != '*') {
-			a[i2][j2] = '*';
-			i1++;
+		/* initialising each element of the mine */
+		m.k = 0;
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++)
+				m.v[i][j] = 0;
 		}
-	}
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) 
-			e[i][j] = '.';
-	}
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(10 + i, 10 + j,"%c", e[i][j]);
-	}*/
 
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++) 
+				m.a[i][j] = 'q';
+		}
+
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++) 
+				m.d[i][j] = '3';
+		}
+
+		/* making the minefield using the function rand */
+		srand(time(NULL));
+		while(i1 < dif) {
+			i2 = rand() % ro;
+			j2 = rand() % col;
+			while(m.a[i2][j2] != '*') {
+				m.a[i2][j2] = '*';
+				i1++;
+			}
+		}
+		for(i = 0; i < ro; i++) {
+			for(j = 0; j < col; j++) 
+				m.e[i][j] = '.';
+		}
 
 	/*counting the no. of mines around each box*/
-	for(i2 = 0; i2 < ro; i2++) {
-		for(j2 = 0; j2 < col; j2++) {
-			mines = 0;
-			for(i = -1; i <= 1; i++) {
-				for(j = -1; j <= 1; j++) {
-					if(((i2 + i) < 0) || ((i2 + i) > (ro - 1)) || ((j2 + j) < 0) || ((j2 + j) > (col - 1)))
-						mines = mines + 0;
-					else if(a[i2 + i][j2 + j] != '*')
-						mines = mines + 0;
-					else if(a[i2 + i][j2 + j] == '*')
-						mines = mines + 1;
+		for(i2 = 0; i2 < ro; i2++) {
+			for(j2 = 0; j2 < col; j2++) {
+				mines = 0;
+				for(i = -1; i <= 1; i++) {
+					for(j = -1; j <= 1; j++) {
+							if(((i2 + i) < 0) || ((i2 + i) > (ro - 1)) || ((j2 + j) < 0) || ((j2 + j) > (col - 1)))
+								mines = mines + 0;
+							else if(m.a[i2 + i][j2 + j] != '*')
+								mines = mines + 0;
+							else if(m.a[i2 + i][j2 + j] == '*')
+								mines = mines + 1;
+					}
 				}
+				/* 48 is ascii of 0 */
+				b = mines + 48;
+				if(b == 48)
+					m.a[i2][j2] = ' ';
+				if(m.a[i2][j2] != '*' && m.a[i2][j2] != ' ')
+					m.a[i2][j2] = b;
 			}
-			b = mines + 48;
-			if(b == 48)
-				a[i2][j2] = ' ';
-			if(a[i2][j2] != '*' && a[i2][j2] != ' ')
-				a[i2][j2] = b;
 		}
 	}
 
-	}
+	mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", (dif - m.k));
 
-	mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", (dif - k));
-	/*printing in the middle*/	
+	/*printing the minefield in the middle*/	
 	x = (COLS - ((col - 1) * 4 + 1)) / 2;
 	p = x;
 	y = (LINES - (ro - 1) * 2) / 2;
 	q = y;
 	move(y, x);
 
-/*	move(y, x);	
-	for(i = y - 1; i < y + (ro - 1) * 2 + 2; i++) {
-		for(j = x - 3; j < x + (col - 1) * 4 + 4; j++)
-			mvprintw(i, j, " ");
-	}
-
-	x = p;
-	y = q;
-	move(y, x);
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) {
-			printw(".");
-			x += 4;
-			move(y, x);
-		}
-		x = p;
-		y += 2;
-		move(y, x);
-	}*/
-	printscr(x, y, p, q, e);
+	printscr(x, y, p, q, m);
 	move(q, p);
 	x = p;
 	y = q;
 
-
-//	attron(A_REVERSE);
-//	mvprintw( 15, 61, ".");
-//	attroff(A_REVERSE);
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++) 
-			v[i][j] = 0;
-	}*/
-
-	/*assigning functions to keys*/
+	/*assigning functions to keys till the key q is pressed */
 	while((c = getch()) != 'q') {
 		int flag = 0;
-	//	init_pair(2, COLOR_WHITE, COLOR_RED);
-	//	attrset(COLOR_PAIR(2));
 		switch(c) {
 			case KEY_UP:
 				if(y == q)
@@ -609,105 +663,100 @@ S:
 				else
 					x -= 4;
 				break;
+			/* for displaying the complete minefield when the cheat code "cheat" is pressed */
 			case 'c':
 				getstr(str);
 				if(strcmp(str, "heat") == 0){
+					/* displays the mine in the center right corner */
 					for( i = 0; i < ro; i++) {
 						for(j = 0; j < col; j++)
-							mvprintw((LINES - ro) / 2 + i, COLS - col + j,"%c",a[i][j]);
+							mvprintw((LINES - ro) / 2 + i, COLS - col + j,"%c",m.a[i][j]);
 							mvprintw((LINES - ro) / 2 + i, COLS - col + j, "\n");
 					}
 				}
 				break;
+			/* for unveiling the mine when enter is pressed */
 			case 10:
-				if(a[(y - q) / 2][(x - p) / 4] == '*' && d[(y - q) / 2][(x - p) / 4] != '#') {
-				//	init_pair(1, COLOR_RED, COLOR_BLACK);
-					revealmines(a, p, q);
+				/* does not unveil the tile if there is a mine or it is flagged already */
+				if(m.a[(y - q) / 2][(x - p) / 4] == '*' && m.d[(y - q) / 2][(x - p) / 4] != '#') {
+					revealmines(m, p, q);
 					attron(COLOR_PAIR(1));
 					refresh();
 					sleep(1);
+					/* diplaying the end of game */
 					mvprintw((LINES) / 2, (COLS - 16) / 2, "BOOM!!! YOU LOST");
 					attroff(COLOR_PAIR(1));
 					refresh();
 					sleep(2);
 					return;
 				}
-				else if( d[(y - q) / 2][(x - p) / 4] == '#');
-				else if( a[(y - q) / 2][(x - p) / 4] != '*') { 
-					printw("%c", a[(y - q) / 2][(x - p) / 4]);
-					e[(y - q) / 2][(x - p) / 4] =  a[(y - q) / 2][(x - p) / 4];
-					if(a[(y - q) / 2][(x - p) / 4] == ' '){
-//						printw("%c", a[(y - q) / 2][(x - p) / 4]);
+				/* do nothing if it is a flagged tile */
+				else if( m.d[(y - q) / 2][(x - p) / 4] == '#');
+				/* unveil the tile if the above conditions are false */
+				else if( m.a[(y - q) / 2][(x - p) / 4] != '*') { 
+					printw("%c", m.a[(y - q) / 2][(x - p) / 4]);
+					m.e[(y - q) / 2][(x - p) / 4] =  m.a[(y - q) / 2][(x - p) / 4];
+					if(m.a[(y - q) / 2][(x - p) / 4] == ' '){
 						move(y, x);
-						openmine(y, x, p, q, a, v, e);
+						openmine(y, x, p, q, m);
 					}
 				}
 				break;
+			/* for starting a new game when n is pressed */
 			case 'n':
-			//	init_pair(2, COLOR_WHITE, COLOR_RED);
-			//	init_pair(1, COLOR_RED, COLOR_BLACK);
-			//	attrset(COLOR_PAIR(2));
-			//	attron(COLOR_PAIR(1));
 				mvprintw( LINES / 2, (COLS - 25) / 2, "Do Want To Start A New Game");
 				mvprintw( LINES / 2 + 1, COLS / 2 - 3 ,"(y/n)?");
-			//	attroff(COLOR_PAIR(1));
-			//	init_pair(1, COLOR_WHITE, COLOR_RED);
+				/* if the user presses y */
 				if((c = getch()) == 'y') {
 					clear();
 					refresh();
 					endwin();
 					goto S;
 				}
+				/* if the user presses n */
 				else if((c == 'n')) {
-			//		init_pair(1, COLOR_WHITE, COLOR_RED);
-			//		attrset(COLOR_PAIR(1));
-					move(q, p);
-					x = p;
-					y = q;
-					printscr(x, y, p, q, e);
-					move(q, p);
-					x = p;
-					y = q;
+					clear();
+					refresh();
+					flag1 = 1;
+					save(m);
+					goto S;
 					}
 				break;
+			/* for marking the mine as flagged */
 			case 'f':
-				if(e[(y - q) / 2][(x - p) / 4] == '.') {
+				if(m.e[(y - q) / 2][(x - p) / 4] == '.') {
 					printw("#");
-					e[(y - q) / 2][(x - p) / 4] = '#';
-					k++;
-					d[(y - q) / 2][(x - p) / 4] = '#';
+					m.e[(y - q) / 2][(x - p) / 4] = '#';
+					/* k is the counter for the no. of tiles that are flagged */
+					m.k++;
+					m.d[(y - q) / 2][(x - p) / 4] = '#';
 				}
-				else if(e[(y - q) / 2][(x - p) / 4] == '#') {
-					e[(y - q) / 2][(x - p) / 4] = '.';
-					d[(y - q) / 2][(x - p) / 4] = '3';
+				/* unflag the flagged tile */
+				else if(m.e[(y - q) / 2][(x - p) / 4] == '#') {
+					m.e[(y - q) / 2][(x - p) / 4] = '.';
+					m.d[(y - q) / 2][(x - p) / 4] = '3';
 					printw(".");
-					k--;
+					/* decrease the count */
+					m.k--;
 				}
-				mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", (dif - k));
+				/* printing the no. of mines left */
+				mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2, "Mines left: %d", (dif - m.k));
 
-				if((dif - k) < 10 && (dif - k) >= 0)
+				if((dif - m.k) < 10 && (dif - m.k) >= 0)
 					mvprintw((LINES - ro - 20) / 2, (COLS - 14) / 2 + 13," "); 
 				break ;
 		}
-	
-	if(k == dif) {
+	/* checking if the tiles flagged are actually mines */
+	if(m.k == dif) {
 		for(i = 0; i < ro; i++) {
 			for(j = 0; j < col; j++) {
-				if((a[i][j] != '*' && d[i][j] == '3') || ( a[i][j] == '*' && d[i][j] == '#'))
+				if((m.a[i][j] != '*' && m.d[i][j] == '3') || ( m.a[i][j] == '*' && m.d[i][j] == '#'))
 					flag++;
 			}
 		}
 	}
-/*	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			mvprintw(10 + i,10 + j,"%c", e[i][j]);
-	}*/
-/*
-		mvprintw(2, 50, "%d", (ro * col));
-		mvprintw(3, 50, "%d", flag);*/
 		refresh();
 	if(flag == (ro * col)) {
-	//	init_pair(1, COLOR_RED, COLOR_BLACK);
 		attron(COLOR_PAIR(1));
 		refresh();
 		sleep(1);
@@ -722,60 +771,93 @@ S:
 	move(y, x);
 	}
 	flag1 = 0;
-	r = ro;
-	co = col;
-	mvprintw( LINES / 2, (COLS - 24) / 2, "Do Want To Save The Game");
+	/* before quitting the game pop up apppers */
+	mvprintw( LINES / 2, (COLS - 28) / 2, "Do You Want To Save The Game");
 	mvprintw( LINES / 2 + 1, COLS / 2 - 3 ,"(y/n)?");
 	while(1) {
+		/* if y is pressed */
 		if((c = getch()) == 'y') {
-			save(a, d, e, v, r, c, dif, k);
+			save(m);
 			break;
 			}
+		/* if n is pressed */
 		else if(c == 'n')
 			break;
 	}
-/*	for(i = 0; i < col; i++)
-		free(v[i]);
-	free(v);*/
+	/* free all the elements */
+	for(i = 0; i < ro; i++)
+		free(m.v[i]);
+	free(m.v);
+	for(i = 0; i < ro; i++)
+		free(m.a[i]);
+	free(m.a);
+	for(i = 0; i < ro; i++)
+		free(m.d[i]);
+	free(m.d);
+	for(i = 0; i < ro; i++)
+		free(m.e[i]);
+	free(m.e);
+
 	refresh();
 	clear();
-//	endwin();
-//	menu();
 	refresh();
+	/* resetting everything to default */
+	dif = 8;
+	ro = 8;
+	col = 8;
 }
 
-void save(char a[ro][col], char d[ro][col], char e[ro][col], int v[ro][col], int r, int co, int dif, int k) {
-	FILE *fp;
+void save(mine m) {
+	/* writing the necessary data to files */
+	FILE *fp, *gp;
 	int i, j;
+	char c = ' ';
+
 	fp = fopen("resume.txt", "w");
-	if(fp == NULL)
-		printw("operation failed\n");
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			fprintf(fp, "%c", a[i][j]);
+	gp = fopen("resume1.txt", "w");
+
+	if(fp == NULL) {
+		printf("operation failed\n");
+		perror("a");
 	}
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			fprintf(fp, "%c", d[i][j]);
-	}
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			fprintf(fp, "%c", e[i][j]);
-	}
-	for(i = 0; i < ro; i++) {
-		for(j = 0; j < col; j++)
-			fprintf(fp, "%d", v[i][j]);
+	if(gp == NULL) {
+		printf("operation failed\n");
+		perror("a");
 	}
 
-	fprintf(fp, "%d", k);
-	fprintf(fp, "%d", ro);
-	fprintf(fp, "%d", col);
-	fprintf(fp, "%d", dif);
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", m.a[i][j]);
+	}
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", m.d[i][j]);
+	}
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++)
+			fprintf(fp, "%c", m.e[i][j]);
+	}
+	fprintf(fp, "%c", c);
+	for(i = 0; i < ro; i++) {
+		for(j = 0; j < col; j++) {
+			fprintf(fp, "%d", m.v[i][j]);
+		}
+	}
+
+	fprintf(gp, "%d", m.k);
+	fprintf(gp, "%c", c);
+	fprintf(gp, "%d", ro);
+	fprintf(gp, "%c", c);
+	fprintf(gp, "%d", col);
+	fprintf(gp, "%c", c);
+	fprintf(gp, "%d", dif);
 	fclose(fp);
+	fclose(gp);
 }
-void printscr(int x, int y, int p, int q, char e[ro][col]) {
+void printscr(int x, int y, int p, int q, mine m) {
 	int i, j;
-	move(y, x);	
+	move(y, x);
+	/* for printing the red box using spaces */
 	for(i = y - 1; i < y + (ro - 1) * 2 + 2; i++) {
 		for(j = x - 3; j < x + (col - 1) * 4 + 4; j++)
 			mvprintw(i, j, " ");
@@ -784,9 +866,10 @@ void printscr(int x, int y, int p, int q, char e[ro][col]) {
 	x = p;
 	y = q;
 	move(y, x);
+	/* for printing the dots */
 	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++) {
-			printw("%c", e[i][j]);
+			printw("%c", m.e[i][j]);
 			x += 4;
 			move(y, x);
 		}
@@ -794,91 +877,76 @@ void printscr(int x, int y, int p, int q, char e[ro][col]) {
 		y += 2;
 		move(y, x);
 	}
-/*	move(q, p);
-	x = p;
-	y = q;*/
 }
 
-void revealmines(char a[ro][col], int p, int q) {
+void revealmines(mine m, int p, int q) {
 	int i, j;
 	for(i = 0; i < ro; i++) {
 		for(j = 0; j < col; j++) {
-			if(a[i][j] == '*')
+			if(m.a[i][j] == '*')
 				mvprintw((2 * i) + q, (4 * j) + p, "*");
 		}
 	}
 }
 
-int opn(int i, int j, int i1, int j1, int p, int q, char a[ro][col], char e[ro][col]) {
+int opn(int i, int j, int i1, int j1, int p, int q, mine m) {
 	if((i + i1) < 0 || ((i + i1) > (col - 1)) || ((j + j1) < 0) || ((j + j1) > (ro - 1)))
 		return 0;
-//	else if(a[j + j1][i + i1] != ' ')
-		
-//		return 0;
+	else if(m.d[j + j1][i + i1] == '#')
+		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", m.d[j + j1][i1 + i]);			
 	else{
-		e[j + j1][i1 + i] =  a[j + j1][i1 + i];	
-		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", a[j + j1][i1 + i]);
+		m.e[j + j1][i1 + i] =  m.a[j + j1][i1 + i];	
+		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", m.e[j + j1][i1 + i]);
 		return 0;
 	}
 }
 
-int openmine(int y, int x, int p, int q, char a[ro][col], int v[ro][col], char e[ro][col]) {
+int openmine(int y, int x, int p, int q, mine m) {
 	int i = 0, j = 0;
 	j = (y - q) / 2;
 	i = (x - p ) / 4;
 	refresh();
-//	sleep(1);
-	if(a[j][i] == ' ') {
-		v[j][i] = 1;
-		opn(i, j, 1, -1, p, q, a, e);
-		opn(i, j, 1, 0, p, q, a, e);
-		opn(i, j, 1, 1, p, q, a, e);
-		opn(i, j, 0, 1, p, q, a, e);
-		opn(i, j, -1, 1, p, q, a, e);
-		opn(i, j, -1, 0, p, q, a, e);
-		opn(i, j, -1, -1, p, q, a, e);
-		opn(i, j, 0, -1, p, q, a, e);
-		if(!((i + 1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + -1)) && !v[j + -1][i + 1]){
-//			if(a[j + -1][i + 1] == ' ')
-				openmine(2 * (j + -1) + q, 4 * (i + 1) + p, p, q, a, v, e);
+	if(m.a[j][i] == ' ') {
+		m.v[j][i] = 1;
+		opn(i, j, 1, -1, p, q, m);
+		opn(i, j, 1, 0, p, q, m);
+		opn(i, j, 1, 1, p, q, m);
+		opn(i, j, 0, 1, p, q, m);
+		opn(i, j, -1, 1, p, q, m);
+		opn(i, j, -1, 0, p, q, m);
+		opn(i, j, -1, -1, p, q, m);
+		opn(i, j, 0, -1, p, q, m);
+		if(!((i + 1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + -1)) && !m.v[j + -1][i + 1]){
+				openmine(2 * (j + -1) + q, 4 * (i + 1) + p, p, q, m);
 		}
 		refresh();
-	//	sleep(1);
-		if(!((i + 1) < 0) && !((j + 0) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + 0)) && !v[j + 0][i + 1]){
-//			if(a[j + 0][i + 1] == ' ')
-				openmine(2 * (j + 0) + q, 4 * (i + 1) + p, p, q, a, v, e);
+		if(!((i + 1) < 0) && !((j + 0) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + 0)) && !m.v[j + 0][i + 1]){
+				openmine(2 * (j + 0) + q, 4 * (i + 1) + p, p, q, m);
 		}
 		refresh();
 
-		if(((i + 1) >= 0) && ((j + 1) >= 0) && ((col - 1) >= (i + 1)) && ((ro - 1) >= (j + 1)) && !v[j + 1][i + 1]){
-//			if(a[j + 1][i + 1] == ' ')
-				openmine(2 * (j + 1) + q, 4 * (i + 1) + p, p, q, a, v, e);
+		if(((i + 1) >= 0) && ((j + 1) >= 0) && ((col - 1) >= (i + 1)) && ((ro - 1) >= (j + 1)) && !m.v[j + 1][i + 1]){
+				openmine(2 * (j + 1) + q, 4 * (i + 1) + p, p, q, m);
 		}
 		refresh();
-//		sleep(1);
-		if(!((i + 0) < 0) && !((j + 1) < 0) && !((col - 1) < (i + 0)) && !((ro - 1) < (j + 1)) && !v[j + 1][i + 0]){
-//			if(a[j + 1][i + 0] == ' ')
-				openmine(2 * (j + 1) + q, 4 * (i + 0) + p, p, q, a, v, e);
+		if(!((i + 0) < 0) && !((j + 1) < 0) && !((col - 1) < (i + 0)) && !((ro - 1) < (j + 1)) && !m.v[j + 1][i + 0]){
+				openmine(2 * (j + 1) + q, 4 * (i + 0) + p, p, q, m);
 		}
 		refresh();
-		if(!((i + -1) < 0) && !((j + 1) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + 1)) && !v[j + 1][i + -1]){
-//			if(a[j + 1][i + -1] == ' ')
-				openmine(2 * (j + 1) + q, 4 * (i + -1) + p, p, q, a, v, e);
+		if(!((i + -1) < 0) && !((j + 1) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + 1)) && !m.v[j + 1][i + -1]){
+				openmine(2 * (j + 1) + q, 4 * (i + -1) + p, p, q, m);
 		}	
 		refresh();
-		if(!((i + -1) < 0) && !((j + 0) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + 0)) && !v[j + 0][i + -1]){
-//			if(a[j + 0][i + -1] == ' ')
-				openmine(2 * (j + 0) + q, 4 * (i + -1) + p, p, q, a, v, e);
+		if(!((i + -1) < 0) && !((j + 0) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + 0)) && !m.v[j + 0][i + -1]){
+				openmine(2 * (j + 0) + q, 4 * (i + -1) + p, p, q, m);
 		}
 			refresh();
-		if(!((i + -1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + -1)) && !v[j + -1][i + -1]){
-//			if(a[j + -1][i + -1] == ' ')
-				openmine(2 * (j + -1) + q, 4 * (i + -1) + p, p, q, a, v, e);
+		if(!((i + -1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + -1)) && !((ro - 1) < (j + -1)) && !m.v[j + -1][i + -1]){
+				openmine(2 * (j + -1) + q, 4 * (i + -1) + p, p, q, m);
 		}
 				refresh();
-		if(!((i + 0) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 0)) && !((ro - 1) < (j + -1)) && !v[j + -1][i + 0]){
-//			if(a[j + -1][i + 0] == ' ')
-				openmine(2 * (j + -1) + q, 4 * (i + 0) + p, p, q, a, v, e);
+		if(!((i + 0) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 0)) && !((ro - 1) < (j + -1)) && !m.v[j + -1][i + 0]){
+				openmine(2 * (j + -1) + q, 4 * (i + 0) + p, p, q, m);
 		}
 			refresh();
 
