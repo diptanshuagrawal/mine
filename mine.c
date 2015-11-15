@@ -1,59 +1,35 @@
+/*****************************************************************************
+ * Copyright (C) Diptanshu Agrawal agrawaldiptanshu@gmail.com
+ *
+ * This program is free software; you can redistribute it and/or modify it
+ * under the terms of the GNU Lesser General Public License as published by
+ * the Free Software Foundation; either version 2.1 of the License, or
+ * (at your option) any later version.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * GNU Lesser General Public License for more details.
+ *
+ * You should have received a copy of the GNU Lesser General Public License
+ * along with this program; if not, write to the Free Software Foundation,
+ * Inc., 51 Franklin Street, Fifth Floor, Boston MA 02110-1301, USA.
+ *****************************************************************************/
+
 #include <stdio.h>
 #include <ncurses.h>
 #include <menu.h>
-#include <stdlib.h>
+#include "mine.h"
 #include <string.h>
+#include <stdlib.h>
 #include <errno.h>
 
 #define CTRLD	4
+/* globally declared variables */
+int ro = 8, col = 8;/*.................................default for row and columns is 8 */
+int dif = 8;/*.............................default for difficulty is 8 i.e no. of mines */
+int flag1 = 0;/*........flag1 variable decides whether the game is to be resumed or not */
 
-int ro = 8, col = 8;
-int dif = 8;
-int flag1 = 0;
-
-typedef struct mine{
-	char **a;
-	char **d;
-	char **e;
-	int **v;
-	int k;
-}mine;
-
-/* function to display minesweeper in the beginning */
-void banner();
-/* function to print the title in the center */
-void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color);
-/* function to go back */
-void back();
-/* function to display menu */
-void menu();
-/* function to start the game */
-void game();
-/* function to resume game */
-void resume();
-/* function to exit from the menu */
-void exitmenu();
-/* function to display the options menu */
-void options();
-/* function to set the difficulty level */
-void diff();
-/* function to set the no. of rows and columns as per user */
-void row();
-/* function to unveil the tile */
-int opn(int i, int j, int i1, int j1, int p, int q, mine m);
-int openmine(int y, int x, int p, int q, mine m);
-/* function to dispaly the about screen of the game */
-void about();
-/* function to reveal all the mines on the minefield when the user clicks on any mine */
-void revealmines(mine m, int p, int q);
-/* function to save all the data to files */
-void save(mine m);
-/* function to print the screen with the red box and the grid */
-void printscr(int x, int y, int p, int q, mine m);
-int main() {
-	banner();
-	menu();
-}
 void print_in_middle(WINDOW *win, int starty, int startx, int width, char *string, chtype color){
 	int length, x, y;
 	float temp;
@@ -83,6 +59,7 @@ void menu() {
 	refresh();
 	#define CTRLD	4
 
+	/* menu options defined here */	
 	char *choices[] = {
 				"            Play Game!!!         ",
 				"            Resume Game          ",
@@ -101,6 +78,7 @@ void menu() {
 	noecho();
 	cbreak();
 	keypad(stdscr, TRUE);
+	/* initialising colours */
 	start_color();
 	init_pair(1, COLOR_RED, COLOR_BLACK);
 	init_pair(4, COLOR_WHITE, COLOR_BLACK);
@@ -112,6 +90,7 @@ void menu() {
 		my_items[i] = new_item(choices[i], NULL);
 	my_items[n_choices] = (ITEM *)NULL;
 
+	/* assigning functions to the menu options using user pointers */
 	set_item_userptr(my_items[0], game);
 	set_item_userptr(my_items[1], resume);
 	set_item_userptr(my_items[2], about);
@@ -119,15 +98,17 @@ void menu() {
 	set_item_userptr(my_items[4], exitmenu);
 	my_menu = new_menu((ITEM **)my_items);
 
+	/* printing the window in the middle of the screen */
 	my_menu_win = newwin(10, 40, (LINES - 10) / 2, (COLS - 40) / 2);
 	keypad(my_menu_win, TRUE);
 
+	/* setting main and sub window */
 	set_menu_win(my_menu, my_menu_win);
 	set_menu_sub(my_menu, derwin(my_menu_win, 6, 38, 3, 1));
 
 	set_menu_mark(my_menu, "->");
 	box(my_menu_win, 0, 0);
-	print_in_middle(my_menu_win, 1, 0, 40, "Minesweeper", COLOR_PAIR(1));
+	print_in_middle(my_menu_win, 1, 0, 40, "KA-BOOM", COLOR_PAIR(1));
 
 	mvwaddch(my_menu_win, 2, 0, ACS_LTEE);
 	mvwhline(my_menu_win, 2, 1, ACS_HLINE, 38);
@@ -137,9 +118,11 @@ void menu() {
 	attroff(COLOR_PAIR(4));
 	refresh();
 
+	/* posting menu on the window */
 	post_menu(my_menu);
 	wrefresh(my_menu_win);
 
+	/* setting what happens till the f1 key is pressed */
 	while((c = wgetch(my_menu_win)) != KEY_F(1)) {
 		switch(c) {
 			case KEY_DOWN:
@@ -149,7 +132,8 @@ void menu() {
 				menu_driver(my_menu, REQ_UP_ITEM);
 				break ;
 			case 10:
-			{	unpost_menu(my_menu);
+			{	/* unposted the menu so that the new function works properly */
+				unpost_menu(my_menu);
 				endwin();
 				ITEM *cur;
 
@@ -158,6 +142,7 @@ void menu() {
 				p = item_userptr(cur);
 				p((char *)item_name(cur));
 				pos_menu_cursor(my_menu);
+				/* cleared the screen after the function is executed */
 				clear();
 				endwin();
 				refresh();
@@ -186,6 +171,7 @@ void menu() {
 	free_menu(my_menu);
 	endwin();
 }
+/* the options function is similar to the menu function */
 void options(){
 	clear();
 	refresh();
@@ -194,7 +180,6 @@ void options(){
 	char *choices[] = {
 				"            Difficulty          ",
 				"          Rows & Columns        ",
-//				"             Colour             "
 				"              Back              ",
 			};
 	ITEM **my_items;
@@ -296,7 +281,6 @@ void row() {
 	refresh();
 	initscr();
 	int c;
-//	noecho();
 	cbreak();
 	keypad(stdscr, TRUE);
 	start_color();
@@ -306,11 +290,13 @@ void row() {
 	mvprintw( LINES - 2, 1, "Press Q To Go Back");
 	mvprintw((LINES - 4) / 2, (COLS - 26) / 2,  "Enter the number of rows: ");
 	refresh();
+	/* taking input from the user for the no. of rows */
 	scanf("%d", &ro);
 	printw("%d", ro);
 	refresh();
 	mvprintw(LINES / 2, (COLS - 28) / 2,  "Enter the number of columns: ");
 	refresh();
+	/* taking input from the user for the no. of columns */
 	scanf("%d", &col);
 	printw("%d", col);
 	refresh();
@@ -336,6 +322,7 @@ S:
 	attrset(COLOR_PAIR(1));
 
 	mvprintw(LINES - 2, 0, "Press Q To Go Back");
+	/* displaying the difficulty levels */
 	mvprintw((LINES/ 2 - 2), (COLS - 8) / 2,  "Beginner");
 	mvprintw(LINES / 2, (COLS - 12) / 2,  "Intermediate");
 	mvprintw((LINES / 2 + 2), (COLS - 6) / 2,  "Expert");
@@ -360,14 +347,17 @@ S:
 				endwin();
 				clear();
 				initscr();
+				/* if the user has selected intermediate */
 				if(y == LINES / 2){
 					dif = (ro + col) / 2;
 					mvprintw(4, (COLS - 28) / 2, "You've selected Intermediate");
 				}
+				/* if the user has selected beginner */
 				if(y == LINES / 2 - 2) {
 					dif = (ro + col) / 4;
 					mvprintw(4, (COLS - 24) / 2, "You've selected Beginner");
 				}
+				/* if the user has selected expert */
 				if(y == LINES / 2 + 2) {
 					dif = ro + col;
 					mvprintw(4, (COLS - 22 ) / 2, "You've selected Expert");
@@ -382,7 +372,6 @@ S:
 	clear();
 	refresh();
 }
-
 void back() {	
 }
 void exitmenu() {
@@ -402,6 +391,7 @@ void about() {
 	attrset(COLOR_PAIR(1));
 	box(stdscr, 0, 0);
 
+	/* printing the lines */
 	mvprintw( LINES - 2, 1, "Press Q To Go Back");
 	mvprintw(LINES / 2 - 10, COLS / 2 - 3, "ABOUT");
 	mvprintw(LINES / 2 - 8, COLS / 2 - 45, "The purpose of the game is to open all the cells of the board which do not contain a bomb.");
@@ -419,6 +409,7 @@ void about() {
 }
 	
 void resume() {
+	/* marking flag1 as 1 if resume is selected */
 	flag1 = 1;
 	game();
 }
@@ -433,10 +424,18 @@ void banner() {
 
 	/* initialising colors */
 	start_color();
-	init_pair(8, COLOR_RED, COLOR_BLACK);
-	init_pair(9, COLOR_YELLOW, COLOR_BLACK);
+	init_pair(8, COLOR_WHITE, COLOR_RED);
+	init_pair(9, COLOR_YELLOW, COLOR_RED);
 	attrset(COLOR_PAIR(8));
-	mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+
+	for(i = 0; i < 9; i++) {
+		for(j = 0; j < 31; j++)
+			mvprintw(LINES / 2 + i - 4, COLS / 2 + j - 15, " ");
+		printw("\n");
+	}
+	mvprintw( LINES / 2, COLS / 2 - 3, "KA-BOOM");
+	box(stdscr, 0, 0);
+
 	/* loop for changing the color */
 	for(i = 0; i < 10; i++) {
 		refresh();
@@ -444,14 +443,14 @@ void banner() {
 		/* if color is red then change it to yellow */
 		if(n == 1) {
 			attrset(COLOR_PAIR(9));
-			mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+			mvprintw( LINES / 2, COLS / 2 - 3, "KA-BOOM");
 			n = 2;
 		}
 		/* if color is yellow then change it to red */
 		else if (n == 2) {
 			n = 1;
 			attrset(COLOR_PAIR(8));
-			mvprintw( LINES / 2, COLS / 2, "MINESWEEPER");
+			mvprintw( LINES / 2, COLS / 2 - 3, "KA-BOOM");
 		}
 		i++;
 	}
@@ -771,7 +770,7 @@ S:
 	move(y, x);
 	}
 	flag1 = 0;
-	/* before quitting the game pop up apppers */
+	/* before quitting the game pop up appears */
 	mvprintw( LINES / 2, (COLS - 28) / 2, "Do You Want To Save The Game");
 	mvprintw( LINES / 2 + 1, COLS / 2 - 3 ,"(y/n)?");
 	while(1) {
@@ -890,24 +889,30 @@ void revealmines(mine m, int p, int q) {
 }
 
 int opn(int i, int j, int i1, int j1, int p, int q, mine m) {
+	/* if the neighbour does not exist then return */
 	if((i + i1) < 0 || ((i + i1) > (col - 1)) || ((j + j1) < 0) || ((j + j1) > (ro - 1)))
 		return 0;
+	/* if neighbour exists and is equal to # then print # */
 	else if(m.d[j + j1][i + i1] == '#')
-		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", m.d[j + j1][i1 + i]);			
+		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", m.d[j + j1][i1 + i]);			 
+	/* if the tile exists and is not a flagged one then unviel the tile */
 	else{
 		m.e[j + j1][i1 + i] =  m.a[j + j1][i1 + i];	
 		mvprintw( ((j + j1) * 2) + q, ((i1 + i) * 4) + p,"%c", m.e[j + j1][i1 + i]);
 		return 0;
 	}
 }
-
+/* the function openmine uses recursion */
 int openmine(int y, int x, int p, int q, mine m) {
 	int i = 0, j = 0;
+	/* calculating the position in the array using the positoin of the cusror on the screen */
 	j = (y - q) / 2;
 	i = (x - p ) / 4;
 	refresh();
+	/* if the tile contains nothing */
 	if(m.a[j][i] == ' ') {
 		m.v[j][i] = 1;
+		/* unveil all the neighbouring tiles */
 		opn(i, j, 1, -1, p, q, m);
 		opn(i, j, 1, 0, p, q, m);
 		opn(i, j, 1, 1, p, q, m);
@@ -916,6 +921,7 @@ int openmine(int y, int x, int p, int q, mine m) {
 		opn(i, j, -1, 0, p, q, m);
 		opn(i, j, -1, -1, p, q, m);
 		opn(i, j, 0, -1, p, q, m);
+		/* in every if condition below i am checking whether the neighbouring tile exists and if it is visited or not */
 		if(!((i + 1) < 0) && !((j + -1) < 0) && !((col - 1) < (i + 1)) && !((ro - 1) < (j + -1)) && !m.v[j + -1][i + 1]){
 				openmine(2 * (j + -1) + q, 4 * (i + 1) + p, p, q, m);
 		}
@@ -924,7 +930,6 @@ int openmine(int y, int x, int p, int q, mine m) {
 				openmine(2 * (j + 0) + q, 4 * (i + 1) + p, p, q, m);
 		}
 		refresh();
-
 		if(((i + 1) >= 0) && ((j + 1) >= 0) && ((col - 1) >= (i + 1)) && ((ro - 1) >= (j + 1)) && !m.v[j + 1][i + 1]){
 				openmine(2 * (j + 1) + q, 4 * (i + 1) + p, p, q, m);
 		}
