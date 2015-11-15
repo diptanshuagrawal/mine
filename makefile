@@ -5,4 +5,4 @@ mine.o : mine.c
 main.o : main.c
 	cc -c main.c
 clean:
-	rm -f *.o project
+	rm -f *.o project *~
