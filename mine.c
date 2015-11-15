@@ -561,7 +561,7 @@ S:
 		fclose(fp);
 }
 
-	/* if flag is not called */
+	/* if resume is not called */
 	if(flag1 == 0) {
 
 		/* initialising each element of the mine */
@@ -687,6 +687,9 @@ S:
 					attroff(COLOR_PAIR(1));
 					refresh();
 					sleep(2);
+					dif = 8;
+					ro = 8;
+					col = 8;
 					return;
 				}
 				/* do nothing if it is a flagged tile */
@@ -764,6 +767,9 @@ S:
 	
 		refresh();
 		sleep(3);
+		dif = 8;
+		ro = 8;
+		col = 8;
 		return;
 	}
 
